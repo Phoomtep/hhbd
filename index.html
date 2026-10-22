@@ -204,7 +204,7 @@ function detectBlow() {
   analyser.getByteFrequencyData(data);
   let sum = 0;
   for (let i = 0; i < data.length; i++) sum += data[i];
-  if (sum / data.length > 35 && !candlesBlown) { extinguishCandles(); return; }
+  if (sum / data.length > 80 && !candlesBlown) { extinguishCandles(); return; }
   animationFrameId = requestAnimationFrame(detectBlow);
 }
 
