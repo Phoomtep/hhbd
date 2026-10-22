@@ -457,7 +457,53 @@ function sizeCanvas() {
 sizeCanvas();
 addEventListener('resize', sizeCanvas);
 
+/* Confetti sound: realistic party popper = sharp air "pop" + paper streamer rustle (noise only, no tones) */
+let sfxCtx = null;
+const CONFETTI_RISE = 0.0; // popper pops instantly
+function confettiSound(count) {
+  try {
+    sfxCtx = sfxCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (sfxCtx.state === 'suspended') sfxCtx.resume();
+    const c = sfxCtx, t = c.currentTime + 0.005;
+    const master = c.createGain();
+    master.gain.value = Math.min(1, 0.6 + count / 250);
+    master.connect(c.destination);
+    const noiseBuf = (dur, pow) => {
+      const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, pow);
+      return buf;
+    };
+    const noise = (dur, pow, type, freq, q, gain, start) => {
+      const src = c.createBufferSource(); src.buffer = noiseBuf(dur, pow);
+      const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+      const g = c.createGain(); g.gain.value = gain;
+      src.connect(f); f.connect(g); g.connect(master); src.start(start);
+    };
+
+    // 1) Pop: sharp crack + round "air" body, mid-range (not shrill)
+    noise(0.05, 4, 'highpass', 1200, 0.7, 0.9, t);          // snap/crack
+    noise(0.14, 3, 'bandpass', 700, 0.6, 1.1, t);           // air burst body
+    const th = c.createOscillator(), tg = c.createGain();   // low chest "thud"
+    th.frequency.setValueAtTime(170, t); th.frequency.exponentialRampToValueAtTime(65, t + 0.09);
+    tg.gain.setValueAtTime(0.7, t); tg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    th.connect(tg); tg.connect(master); th.start(t); th.stop(t + 0.12);
+
+    // 2) Streamer / confetti flutter: soft paper rustle, quickly fading
+    noise(0.7, 2, 'bandpass', 2200, 0.5, 0.22, t + 0.04);
+    const flutters = Math.min(18, 8 + Math.round(count / 10));
+    for (let i = 0; i < flutters; i++) {
+      const st = t + 0.06 + Math.pow(Math.random(), 1.6) * 0.6;   // denser early, sparser later
+      noise(0.04 + Math.random() * 0.04, 2, 'bandpass', 1500 + Math.random() * 1800, 1.2, 0.07 + Math.random() * 0.12, st);
+    }
+  } catch (e) { /* audio unavailable; ignore */ }
+}
+
 function confettiBurst(x, y, count) {
+  confettiSound(count);
+  setTimeout(() => spawnConfetti(x, y, count), CONFETTI_RISE * 1000);
+}
+
+function spawnConfetti(x, y, count) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const colors = ['#f1c2c2', '#e59d9d', '#d67575', '#fbeeee', '#ffd166', '#ffb703'];
   for (let i = 0; i < count; i++) {
