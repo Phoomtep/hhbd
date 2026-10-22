@@ -108,6 +108,11 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 
 <div class="w-full max-w-md h-full sm:h-[90vh] sm:rounded-3xl sm:shadow-2xl bg-white/70 backdrop-blur-md flex flex-col relative overflow-hidden border border-white/50">
 <div id="sparks" class="absolute inset-0 z-0"></div>
+<button id="music-btn" onclick="toggleMusic()" aria-label="Toggle music" class="btn hidden absolute top-3 right-3 z-30 w-10 h-10 rounded-full bg-white/80 border border-blush-200 text-blush-600 shadow-sm items-center justify-center">
+  <svg id="music-icon-on" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+  <svg id="music-icon-off" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0zM3 3l18 18"/></svg>
+</button>
+<div id="yt-holder" style="position:fixed;left:-10px;top:-10px;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none" aria-hidden="true"><div id="yt-player"></div></div>
 <div id="main-container" class="flex-1 flex flex-col justify-between px-6 pb-8 pt-2 relative z-10 overflow-y-auto">
 
   <!-- STEP 1: CAKE -->
@@ -206,6 +211,55 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 
 <script>
 const $ = id => document.getElementById(id);
+
+/* ===== YouTube music =====
+   Paste your YouTube link here (add ?t=45 or &t=45 to start at 45s). Leave '' to disable. */
+const MUSIC_URL = 'https://youtu.be/RHT8gNLRFtU?si=9DxbOfDgvKHyjBV1';
+const MUSIC_VOLUME = 70; // 0-100
+
+const MUSIC_ID = (() => { const m = MUSIC_URL.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(MUSIC_URL) ? MUSIC_URL : null); })();
+const MUSIC_START = (() => { const m = MUSIC_URL.match(/[?&#](?:t|start)=(\d+)/); return m ? +m[1] : 0; })();
+let ytPlayer = null, ytReady = false, wantMusic = false;
+
+function syncMusicBtn() {
+  const playing = ytReady && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1;
+  $('music-icon-on').classList.toggle('hidden', !playing);
+  $('music-icon-off').classList.toggle('hidden', playing);
+}
+if (MUSIC_ID) {
+  window.onYouTubeIframeAPIReady = () => {
+    ytPlayer = new YT.Player('yt-player', {
+      width: '200', height: '200', videoId: MUSIC_ID,
+      playerVars: { playsinline: 1, controls: 0, loop: 1, playlist: MUSIC_ID, start: MUSIC_START, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => { ytReady = true; ytPlayer.setVolume(MUSIC_VOLUME); if (wantMusic) ytPlayer.playVideo(); },
+        onStateChange: syncMusicBtn,
+        onError: () => { $('music-btn').classList.add('hidden'); console.warn('YouTube video cannot be played (embedding disabled or unavailable).'); }
+      }
+    });
+  };
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+function playMusic() {
+  if (!MUSIC_ID) return;
+  wantMusic = true;
+  $('music-btn').classList.remove('hidden');
+  $('music-btn').classList.add('flex');
+  if (ytReady) { ytPlayer.setVolume(MUSIC_VOLUME); ytPlayer.playVideo(); }
+}
+function stopMusic() {
+  wantMusic = false;
+  if (ytReady) ytPlayer.pauseVideo();
+  $('music-btn').classList.add('hidden');
+  $('music-btn').classList.remove('flex');
+}
+function toggleMusic() {
+  if (!ytReady) return;
+  if (ytPlayer.getPlayerState() === 1) { wantMusic = false; ytPlayer.pauseVideo(); }
+  else { wantMusic = true; ytPlayer.playVideo(); }
+}
 const candlesContainer = $('candles-container');
 const totalCandles = 3;
 let candlesBlown = false, audioContext = null, analyser = null, micStream = null, isListening = false, animationFrameId = null, freqData = null;
@@ -327,6 +381,7 @@ function openCard() {
   if (env.classList.contains('open')) return;
   env.classList.remove('env-wobble');
   env.classList.add('open');
+  playMusic();
   setTimeout(() => {
     showStep('step-card');
     document.querySelectorAll('#card-body > *').forEach((el, i) => {
@@ -339,6 +394,7 @@ function openCard() {
 }
 
 function resetExperience() {
+  stopMusic();
   candlesBlown = false;
   renderCandles();
   resetMeter();
