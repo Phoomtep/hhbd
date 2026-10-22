@@ -365,15 +365,16 @@ function extinguishCandles() {
       setTimeout(() => s.remove(), 1700);
     }, i * 140);
   });
+  
   setTimeout(() => {
     const r = candlesContainer.getBoundingClientRect();
     confettiBurst(r.left + r.width / 2, r.top, 110);
-  }, 300);
+  }, 1350);
   setTimeout(() => {
     showStep('step-envelope');
     $('env').classList.remove('open');
     $('env').classList.add('env-wobble');
-  }, 1500);
+  }, 2000);
 }
 
 function openCard() {
