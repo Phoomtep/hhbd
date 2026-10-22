@@ -34,7 +34,15 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #f1c2c2; border-radius: 4px; }
-@media (prefers-reduced-motion: reduce) { .animate-float, .flame { animation: none; } }
+
+/* Mic level meter */
+#meter-wrap { transition: opacity .3s; }
+#meter-wrap.idle { opacity: .55; }
+#meter-zone { background: repeating-linear-gradient(135deg, #f7dcdc 0 5px, #fbeeee 5px 10px); }
+#meter-fill { transition: background-color .15s; }
+#meter-peak { transition: left .1s linear; }
+
+@media (prefers-reduced-motion: reduce) { .animate-float, .flame { animation: none; } #meter-fill, #meter-peak { transition: none; } }
 </style>
 </head>
 <body class="h-full bg-gradient-to-br from-blush-50 via-blush-100 to-roseGold-light text-neutral-700 flex flex-col justify-center items-center overflow-x-hidden selection:bg-blush-200">
@@ -43,13 +51,13 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 <div id="main-container" class="flex-1 flex flex-col justify-between px-6 pb-8 pt-2 relative z-10 overflow-y-auto">
 
   <!-- STEP 1: CAKE -->
-  <div id="step-cake" class="flex-1 flex flex-col items-center justify-center text-center space-y-6 my-auto">
+  <div id="step-cake" class="flex-1 flex flex-col items-center justify-center text-center space-y-5 my-auto">
     <div class="space-y-2">
       <h1 class="font-serif text-3xl sm:text-4xl text-neutral-800 font-normal">Make a Wish</h1>
       <p class="text-sm text-neutral-500 max-w-[280px] mx-auto font-light">Take a gentle breath and blow into your microphone, or tap the candles below.</p>
     </div>
 
-    <div class="relative py-6 w-full flex flex-col items-center animate-float">
+    <div class="relative py-4 w-full flex flex-col items-center animate-float">
       <div id="candles-container" class="relative z-20 flex justify-center gap-8 mb-[-3px] cursor-pointer" onclick="extinguishCandles()"></div>
       <svg viewBox="0 40 280 110" class="w-[280px] max-w-full" role="img" aria-label="Two-tier birthday cake">
         <defs><clipPath id="tc"><rect x="70" y="44" width="140" height="46" rx="12"/></clipPath></defs>
@@ -65,6 +73,24 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
           <rect x="170" y="50" width="9" height="20" rx="4.5"/>
         </g>
       </svg>
+    </div>
+
+    <!-- MIC LEVEL METER -->
+    <div id="meter-wrap" class="idle w-full max-w-[300px] text-left">
+      <div class="flex items-baseline justify-between text-xs mb-1.5">
+        <span id="meter-status" class="text-neutral-500">Mic is off</span>
+        <span id="meter-pct" class="tabular-nums font-medium text-neutral-600">0%</span>
+      </div>
+      <div id="meter" role="meter" aria-label="Microphone level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+           class="relative h-4 rounded-full bg-blush-100 border border-blush-200 overflow-hidden">
+        <div id="meter-zone" class="absolute inset-y-0 right-0"></div>
+        <div id="meter-fill" class="absolute inset-y-0 left-0 rounded-full bg-blush-300" style="width:0%"></div>
+        <div id="meter-peak" class="absolute inset-y-0 w-[3px] bg-neutral-400/70 rounded-full" style="left:0%"></div>
+        <div id="meter-target" class="absolute inset-y-[-1px] w-[2px] bg-neutral-700"></div>
+      </div>
+      <div class="relative h-5 mt-1">
+        <span id="meter-target-label" class="absolute text-[11px] text-neutral-600 whitespace-nowrap font-medium" style="transform:translateX(-50%)">Blow past here</span>
+      </div>
     </div>
 
     <div class="w-full space-y-3">
@@ -122,7 +148,58 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 <script>
 const candlesContainer = document.getElementById('candles-container');
 const totalCandles = 3;
-let candlesBlown = false, audioContext = null, analyser = null, microphone = null, isListening = false, animationFrameId = null;
+let candlesBlown = false, audioContext = null, analyser = null, microphone = null, micStream = null, isListening = false, animationFrameId = null;
+
+/* ---- Blow detection settings ----
+   Level = average of the mic frequency data (0–255).
+   BLOW_THRESHOLD: level the breath must reach to put out the candles.
+   METER_MAX: level shown as 100% on the bar (keep it above the threshold). */
+const BLOW_THRESHOLD = 80;
+const METER_MAX = 120;
+
+const meterEl = document.getElementById('meter');
+const meterWrap = document.getElementById('meter-wrap');
+const meterFill = document.getElementById('meter-fill');
+const meterPeak = document.getElementById('meter-peak');
+const meterPct = document.getElementById('meter-pct');
+const meterStatus = document.getElementById('meter-status');
+let displayLevel = 0, peakLevel = 0, peakHoldUntil = 0;
+
+(function placeTarget() {
+  const pos = (BLOW_THRESHOLD / METER_MAX) * 100;
+  document.getElementById('meter-target').style.left = pos + '%';
+  document.getElementById('meter-zone').style.left = pos + '%';
+  const label = document.getElementById('meter-target-label');
+  label.style.left = Math.min(Math.max(pos, 22), 82) + '%';
+})();
+
+function setMeter(level, now) {
+  // Rises instantly, falls smoothly
+  displayLevel = Math.max(level, displayLevel * 0.88);
+  if (level >= peakLevel || now > peakHoldUntil) {
+    if (level >= peakLevel) peakHoldUntil = now + 900;
+    peakLevel = Math.max(level, peakLevel * 0.96);
+  }
+  const pct = Math.min(100, (displayLevel / METER_MAX) * 100);
+  const peakPct = Math.min(100, (peakLevel / METER_MAX) * 100);
+  const ratio = displayLevel / BLOW_THRESHOLD;
+  meterFill.style.width = pct + '%';
+  meterPeak.style.left = 'calc(' + peakPct + '% - 3px)';
+  meterFill.style.backgroundColor = ratio >= 1 ? '#d67575' : ratio >= 0.7 ? '#ffb703' : '#f1c2c2';
+  meterPct.textContent = Math.round(pct) + '%';
+  meterEl.setAttribute('aria-valuenow', Math.round(pct));
+  meterStatus.textContent = ratio >= 1 ? 'Wish sent!' : ratio >= 0.7 ? 'Almost there, keep blowing' : ratio >= 0.15 ? 'Blow harder' : 'Listening…';
+}
+
+function resetMeter(statusText) {
+  displayLevel = 0; peakLevel = 0;
+  meterFill.style.width = '0%';
+  meterPeak.style.left = '0%';
+  meterFill.style.backgroundColor = '#f1c2c2';
+  meterPct.textContent = '0%';
+  meterEl.setAttribute('aria-valuenow', 0);
+  meterStatus.textContent = statusText || 'Mic is off';
+}
 
 function renderCandles() {
   candlesContainer.innerHTML = '';
@@ -163,6 +240,7 @@ function openCard() {
 function resetExperience() {
   candlesBlown = false;
   renderCandles();
+  resetMeter();
   document.getElementById('step-card').classList.add('hidden');
   document.getElementById('step-envelope').classList.add('hidden');
   document.getElementById('step-cake').classList.remove('hidden');
@@ -171,13 +249,15 @@ function resetExperience() {
 async function toggleMicrophone() {
   if (isListening) { stopMicrophone(); return; }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioContext.createAnalyser();
-    microphone = audioContext.createMediaStreamSource(stream);
+    microphone = audioContext.createMediaStreamSource(micStream);
     analyser.fftSize = 512;
     microphone.connect(analyser);
     isListening = true;
+    meterWrap.classList.remove('idle');
+    resetMeter('Listening…');
     document.getElementById('mic-btn-text').innerText = "Listening... Blow into mic now!";
     document.getElementById('mic-btn').classList.add('bg-blush-600', 'ring-4', 'ring-blush-200');
     detectBlow();
@@ -190,8 +270,11 @@ async function toggleMicrophone() {
 
 function stopMicrophone() {
   if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   if (audioContext && audioContext.state !== 'closed') audioContext.close();
   isListening = false;
+  meterWrap.classList.add('idle');
+  if (!candlesBlown) resetMeter();
   const t = document.getElementById('mic-btn-text');
   if (t) t.innerText = "Enable Mic to Blow Out Candles";
   const b = document.getElementById('mic-btn');
@@ -204,7 +287,9 @@ function detectBlow() {
   analyser.getByteFrequencyData(data);
   let sum = 0;
   for (let i = 0; i < data.length; i++) sum += data[i];
-  if (sum / data.length > 80 && !candlesBlown) { extinguishCandles(); return; }
+  const level = sum / data.length;
+  setMeter(level, performance.now());
+  if (level > BLOW_THRESHOLD && !candlesBlown) { extinguishCandles(); return; }
   animationFrameId = requestAnimationFrame(detectBlow);
 }
 
