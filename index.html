@@ -58,9 +58,32 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
 #meter-fill { transition: background-color .25s ease; }
 
 /* Envelope */
-.env { perspective: 700px; }
-.env-flap { transform-origin: top center; transition: transform .7s var(--ease), opacity .3s ease .5s; backface-visibility: hidden; }
-.env.open .env-flap { transform: rotateX(180deg); opacity: 0; }
+.env {
+  perspective: 700px;
+  overflow: hidden;
+}
+
+.env-flap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100%;
+  height: 82px;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  transition: transform .7s var(--ease), opacity .3s ease .5s;
+  backface-visibility: hidden;
+  background: rgba(229, 157, 157, 0.82);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: inset 0 -8px 0 rgba(255,255,255,0.12);
+}
+
+.env.open .env-flap {
+  transform: translateX(-50%) rotateX(180deg);
+  opacity: 0;
+}
 .env-letter { transition: transform .8s var(--ease) .35s; }
 .env.open .env-letter { transform: translateY(-34px) scale(1.04); }
 .env-wobble { animation: wobble 2.8s ease-in-out infinite; }
