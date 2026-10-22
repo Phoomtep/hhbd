@@ -136,7 +136,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
     </div>
     <div class="pt-2 flex space-x-3">
       <button onclick="resetExperience()" class="flex-1 py-3 px-4 rounded-xl border border-blush-200 text-blush-600 hover:bg-blush-50 text-xs font-semibold transition-all">Relive Candle Wish</button>
-      <button onclick="triggerConfettiBurst()" class="flex-1 py-3 px-4 rounded-xl bg-blush-500 hover:bg-blush-600 text-white text-xs font-semibold shadow-md shadow-blush-200 transition-all">Send Good Vibes 🎉</button>
+      <button class="flex-1 py-3 px-4 rounded-xl bg-blush-500 hover:bg-blush-600 text-white text-xs font-semibold shadow-md shadow-blush-200 transition-all">Send Good Vibes 🎉</button>
     </div>
   </div>
 
@@ -234,7 +234,6 @@ function extinguishCandles() {
 function openCard() {
   document.getElementById('step-envelope').classList.add('hidden');
   document.getElementById('step-card').classList.remove('hidden');
-  triggerConfettiBurst();
 }
 
 function resetExperience() {
@@ -303,7 +302,7 @@ function triggerConfettiBurst() {
   const colors = ['#f1c2c2', '#e59d9d', '#d67575', '#fbeeee', '#ffd166', '#ffb703'];
   for (let i = 0; i < 90; i++) {
     particles.push({
-      x: canvas.width / 2, y: canvas.height * 0.6,
+      x: canvas.width / 2, y: canvas.height * 0.40,
       vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.8) * 14 - 3,
       radius: Math.random() * 5 + 2, color: colors[Math.floor(Math.random() * colors.length)],
       alpha: 1, decay: Math.random() * 0.015 + 0.008
