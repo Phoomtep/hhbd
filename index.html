@@ -20,44 +20,81 @@ tailwind.config = {
 }
 </script>
 <style>
-body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+:root { --ease: cubic-bezier(.22,1,.36,1); }
+body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); background-size: 200% 200%; animation: bgShift 16s ease-in-out infinite; }
+@keyframes bgShift { 0%,100% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } }
 .font-serif { font-family: 'Playfair Display', serif; }
-@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* Step transitions */
+.step { opacity: 0; transform: translateY(14px) scale(.98); transition: opacity .5s ease, transform .7s var(--ease); }
+.step.active { opacity: 1; transform: none; }
+.in { animation: rise .8s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* Cake */
 .animate-float { animation: float 5s ease-in-out infinite; }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.candle-item { animation: drop .7s var(--ease) both; }
+@keyframes drop { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: none; } }
+.flame-wrap { transform-origin: bottom center; transform: rotate(calc(var(--lean, 0) * 1deg)); transition: transform .15s ease-out, opacity .5s, scale .5s; }
+.flame { animation: flicker .7s infinite alternate ease-in-out; transform-origin: bottom center; }
 @keyframes flicker {
-  0%,100% { transform: scale(1) rotate(-2deg); opacity: .9; }
-  50% { transform: scale(1.12) rotate(2deg); opacity: 1; filter: drop-shadow(0 0 6px rgba(255,182,115,.8)); }
+  0% { transform: scale(1) rotate(-3deg); opacity: .9; filter: drop-shadow(0 0 3px rgba(255,182,115,.5)); }
+  100% { transform: scale(1.12, 1.18) rotate(3deg); opacity: 1; filter: drop-shadow(0 0 8px rgba(255,182,115,.9)); }
 }
-.flame { animation: flicker .6s infinite alternate ease-in-out; transform-origin: bottom center; }
-.smoke { animation: riseAndFade 1.5s forwards ease-out; }
-@keyframes riseAndFade { 0% { transform: translateY(0) scale(1); opacity: .8; } 100% { transform: translateY(-30px) scale(1.8); opacity: 0; } }
+.flame-wrap.out { opacity: 0; scale: .2; transition: opacity .35s ease-in, scale .35s ease-in; }
+.smoke { position: absolute; top: -6px; left: 50%; width: 8px; height: 12px; margin-left: -4px; border-radius: 50%; background: rgba(160,160,160,.45); filter: blur(2px); animation: puff 1.6s ease-out forwards; pointer-events: none; }
+@keyframes puff { 0% { transform: translate(0,0) scale(.6); opacity: .8; } 100% { transform: translate(8px,-46px) scale(2.2); opacity: 0; } }
+
+/* Mic button and meter */
+.btn { transition: transform .25s var(--ease), box-shadow .3s ease, background-color .3s ease; }
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: scale(.97); }
+.btn.listening { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(214,117,117,.45); } 50% { box-shadow: 0 0 0 10px rgba(214,117,117,0); } }
+#meter-wrap { transition: opacity .5s ease; }
+#meter-wrap.idle { opacity: .55; }
+#meter-zone { background: repeating-linear-gradient(135deg, #f7dcdc 0 5px, #fbeeee 5px 10px); }
+#meter-fill { transition: background-color .25s ease; }
+
+/* Envelope */
+.env { perspective: 700px; }
+.env-flap { transform-origin: top center; transition: transform .7s var(--ease), opacity .3s ease .5s; backface-visibility: hidden; }
+.env.open .env-flap { transform: rotateX(180deg); opacity: 0; }
+.env-letter { transition: transform .8s var(--ease) .35s; }
+.env.open .env-letter { transform: translateY(-34px) scale(1.04); }
+.env-wobble { animation: wobble 2.8s ease-in-out infinite; }
+@keyframes wobble { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-1.5deg); } 75% { transform: rotate(1.5deg); } }
+.env.open { animation: none; }
+
+/* Sparkles */
+.spark { position: absolute; border-radius: 50%; background: #f1c2c2; opacity: 0; animation: twinkle var(--d) ease-in-out var(--delay) infinite; pointer-events: none; }
+@keyframes twinkle { 0%,100% { opacity: 0; transform: translateY(0) scale(.5); } 50% { opacity: .7; transform: translateY(-18px) scale(1); } }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #f1c2c2; border-radius: 4px; }
 
-/* Mic level meter */
-#meter-wrap { transition: opacity .3s; }
-#meter-wrap.idle { opacity: .55; }
-#meter-zone { background: repeating-linear-gradient(135deg, #f7dcdc 0 5px, #fbeeee 5px 10px); }
-#meter-fill { transition: background-color .15s; }
-#meter-peak { transition: left .1s linear; }
-
-@media (prefers-reduced-motion: reduce) { .animate-float, .flame { animation: none; } #meter-fill, #meter-peak { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .spark { display: none; }
+}
 </style>
 </head>
 <body class="h-full bg-gradient-to-br from-blush-50 via-blush-100 to-roseGold-light text-neutral-700 flex flex-col justify-center items-center overflow-x-hidden selection:bg-blush-200">
 
 <div class="w-full max-w-md h-full sm:h-[90vh] sm:rounded-3xl sm:shadow-2xl bg-white/70 backdrop-blur-md flex flex-col relative overflow-hidden border border-white/50">
+<div id="sparks" class="absolute inset-0 z-0"></div>
 <div id="main-container" class="flex-1 flex flex-col justify-between px-6 pb-8 pt-2 relative z-10 overflow-y-auto">
 
   <!-- STEP 1: CAKE -->
-  <div id="step-cake" class="flex-1 flex flex-col items-center justify-center text-center space-y-5 my-auto">
-    <div class="space-y-2">
+  <div id="step-cake" class="step active flex-1 flex flex-col items-center justify-center text-center space-y-5 my-auto">
+    <div class="space-y-2 in" style="animation-delay:.1s">
       <h1 class="font-serif text-3xl sm:text-4xl text-neutral-800 font-normal">Make a Wish</h1>
       <p class="text-sm text-neutral-500 max-w-[280px] mx-auto font-light">Take a gentle breath and blow into your microphone, or tap the candles below.</p>
     </div>
 
-    <div class="relative py-4 w-full flex flex-col items-center animate-float">
+    <div class="in w-full" style="animation-delay:.25s"><div class="relative py-4 w-full flex flex-col items-center animate-float">
       <div id="candles-container" class="relative z-20 flex justify-center gap-8 mb-[-3px] cursor-pointer" onclick="extinguishCandles()"></div>
       <svg viewBox="0 40 280 110" class="w-[280px] max-w-full" role="img" aria-label="Two-tier birthday cake">
         <defs><clipPath id="tc"><rect x="70" y="44" width="140" height="46" rx="12"/></clipPath></defs>
@@ -73,10 +110,9 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
           <rect x="170" y="50" width="9" height="20" rx="4.5"/>
         </g>
       </svg>
-    </div>
+    </div></div>
 
-    <!-- MIC LEVEL METER -->
-    <div id="meter-wrap" class="idle w-full max-w-[300px] text-left">
+    <div id="meter-wrap" class="idle w-full max-w-[300px] text-left in" style="animation-delay:.4s">
       <div class="flex items-baseline justify-between text-xs mb-1.5">
         <span id="meter-status" class="text-neutral-500">Mic is off</span>
         <span id="meter-pct" class="tabular-nums font-medium text-neutral-600">0%</span>
@@ -93,8 +129,8 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
       </div>
     </div>
 
-    <div class="w-full space-y-3">
-      <button id="mic-btn" onclick="toggleMicrophone()" class="w-full py-3.5 px-6 rounded-2xl bg-blush-500 hover:bg-blush-600 text-white font-medium text-sm shadow-md shadow-blush-200 transition-all duration-300 flex items-center justify-center space-x-2">
+    <div class="w-full space-y-3 in" style="animation-delay:.55s">
+      <button id="mic-btn" onclick="toggleMicrophone()" class="btn w-full py-3.5 px-6 rounded-2xl bg-blush-500 hover:bg-blush-600 text-white font-medium text-sm shadow-md shadow-blush-200 flex items-center justify-center space-x-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
         <span id="mic-btn-text">Enable Mic to Blow Out Candles</span>
       </button>
@@ -102,28 +138,28 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
   </div>
 
   <!-- STEP 2: ENVELOPE -->
-  <div id="step-envelope" class="hidden flex-1 flex flex-col items-center justify-center text-center space-y-6 my-auto">
+  <div id="step-envelope" class="step hidden flex-1 flex flex-col items-center justify-center text-center space-y-6 my-auto">
     <div class="space-y-2">
       <span class="inline-block text-xs uppercase tracking-widest text-blush-500 font-semibold">Special Delivery</span>
       <h2 class="font-serif text-3xl text-neutral-800">A Letter For You</h2>
       <p class="text-sm text-neutral-500 max-w-[260px] mx-auto font-light">The candles are out, your wish is sent to the universe. Open your birthday card below.</p>
     </div>
-    <div onclick="openCard()" class="w-64 h-48 bg-blush-100 hover:bg-blush-200 rounded-2xl shadow-lg border border-blush-200 relative cursor-pointer flex flex-col items-center justify-center transition-transform duration-300 hover:scale-105 group">
-      <div class="absolute top-0 w-0 h-0 border-l-[128px] border-l-transparent border-r-[128px] border-r-transparent border-t-[80px] border-t-blush-300/80 transition-all group-hover:border-t-blush-400"></div>
-      <div class="absolute inset-x-4 bottom-4 top-12 bg-white/80 rounded-xl flex flex-col items-center justify-center p-4 shadow-sm">
+    <div id="env" onclick="openCard()" class="env env-wobble w-64 h-48 bg-blush-100 hover:bg-blush-200 rounded-2xl shadow-lg border border-blush-200 relative cursor-pointer flex flex-col items-center justify-center transition-[transform,background-color] duration-500 hover:scale-105">
+      <div class="env-letter absolute inset-x-4 bottom-4 top-12 bg-white/80 rounded-xl flex flex-col items-center justify-center p-4 shadow-sm">
         <div class="w-10 h-10 rounded-full bg-blush-500 text-white flex items-center justify-center mb-2 shadow-sm font-serif italic text-lg">P</div>
         <span class="text-xs tracking-wide text-neutral-600 font-medium">Tap to open card</span>
       </div>
+      <div class="env-flap absolute top-0 w-0 h-0 border-l-[128px] border-l-transparent border-r-[128px] border-r-transparent border-t-[80px] border-t-blush-300/80"></div>
     </div>
   </div>
 
   <!-- STEP 3: CARD -->
-  <div id="step-card" class="hidden flex-1 flex flex-col justify-between space-y-4 pt-2">
+  <div id="step-card" class="step hidden flex-1 flex flex-col justify-between space-y-4 pt-2">
     <div class="text-center pb-2 border-b border-blush-100">
       <span class="text-[10px] uppercase tracking-widest text-blush-500 font-semibold">27th Birthday Card</span>
       <h2 class="font-serif text-2xl text-neutral-800">To Someone Truly Special</h2>
     </div>
-    <div class="flex-1 overflow-y-auto px-2 space-y-4 text-sm text-neutral-600 font-light leading-relaxed pr-1">
+    <div id="card-body" class="flex-1 overflow-y-auto px-2 space-y-4 text-sm text-neutral-600 font-light leading-relaxed pr-1">
       <p class="font-serif italic text-base text-blush-700">Dear Fish Ball Cheeks,</p>
       <p>Happy 27th birthday. As you step into this new chapter of your life, I wanted to take a quiet moment to send some genuine warmth and good energy your way.</p>
       <p>Knowing how deeply you feel things as an INFJ—your profound empathy, your intuitive wisdom, and the quiet strength with which you navigate this world—is something truly rare. You bring so much thoughtfulness and depth to everything you touch.</p>
@@ -135,79 +171,104 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color
       </div>
     </div>
     <div class="pt-2 flex space-x-3">
-      <button onclick="resetExperience()" class="flex-1 py-3 px-4 rounded-xl border border-blush-200 text-blush-600 hover:bg-blush-50 text-xs font-semibold transition-all">Relive Candle Wish</button>
-      <button class="flex-1 py-3 px-4 rounded-xl bg-blush-500 hover:bg-blush-600 text-white text-xs font-semibold shadow-md shadow-blush-200 transition-all">Send Good Vibes 🎉</button>
+      <button onclick="resetExperience()" class="btn flex-1 py-3 px-4 rounded-xl border border-blush-200 text-blush-600 hover:bg-blush-50 text-xs font-semibold">Relive Candle Wish</button>
+      <button onclick="confettiBurst(innerWidth/2, innerHeight*0.8, 70)" class="btn flex-1 py-3 px-4 rounded-xl bg-blush-500 hover:bg-blush-600 text-white text-xs font-semibold shadow-md shadow-blush-200">Send Good Vibes 🎉</button>
     </div>
   </div>
 
 </div>
 </div>
 
-<canvas id="confetti-canvas" class="absolute inset-0 pointer-events-none z-50 w-full h-full hidden"></canvas>
+<canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50 w-full h-full"></canvas>
 
 <script>
-const candlesContainer = document.getElementById('candles-container');
+const $ = id => document.getElementById(id);
+const candlesContainer = $('candles-container');
 const totalCandles = 3;
-let candlesBlown = false, audioContext = null, analyser = null, microphone = null, micStream = null, isListening = false, animationFrameId = null;
+let candlesBlown = false, audioContext = null, analyser = null, micStream = null, isListening = false, animationFrameId = null, freqData = null;
 
-/* ---- Blow detection settings ----
-   Level = average of the mic frequency data (0–255).
-   BLOW_THRESHOLD: level the breath must reach to put out the candles.
-   METER_MAX: level shown as 100% on the bar (keep it above the threshold). */
 const BLOW_THRESHOLD = 80;
 const METER_MAX = 120;
 
-const meterEl = document.getElementById('meter');
-const meterWrap = document.getElementById('meter-wrap');
-const meterFill = document.getElementById('meter-fill');
-const meterPeak = document.getElementById('meter-peak');
-const meterPct = document.getElementById('meter-pct');
-const meterStatus = document.getElementById('meter-status');
-let displayLevel = 0, peakLevel = 0, peakHoldUntil = 0;
+const meterEl = $('meter'), meterWrap = $('meter-wrap'), meterFill = $('meter-fill'), meterPeak = $('meter-peak'), meterPct = $('meter-pct'), meterStatus = $('meter-status');
+let displayLevel = 0, peakLevel = 0, shownPct = 0, shownPeak = 0, meterRaf = null;
 
 (function placeTarget() {
   const pos = (BLOW_THRESHOLD / METER_MAX) * 100;
-  document.getElementById('meter-target').style.left = pos + '%';
-  document.getElementById('meter-zone').style.left = pos + '%';
-  const label = document.getElementById('meter-target-label');
-  label.style.left = Math.min(Math.max(pos, 22), 82) + '%';
+  $('meter-target').style.left = pos + '%';
+  $('meter-zone').style.left = pos + '%';
+  $('meter-target-label').style.left = Math.min(Math.max(pos, 22), 82) + '%';
 })();
 
-function setMeter(level, now) {
-  // Rises instantly, falls smoothly
-  displayLevel = Math.max(level, displayLevel * 0.88);
-  if (level >= peakLevel || now > peakHoldUntil) {
-    if (level >= peakLevel) peakHoldUntil = now + 900;
-    peakLevel = Math.max(level, peakLevel * 0.96);
+/* Sparkles in the background */
+(function sparks() {
+  const wrap = $('sparks');
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('span');
+    const size = 3 + Math.random() * 5;
+    s.className = 'spark';
+    s.style.cssText = `left:${Math.random()*100}%;top:${20+Math.random()*75}%;width:${size}px;height:${size}px;--d:${4+Math.random()*4}s;--delay:${-Math.random()*6}s`;
+    wrap.appendChild(s);
   }
-  const pct = Math.min(100, (displayLevel / METER_MAX) * 100);
-  const peakPct = Math.min(100, (peakLevel / METER_MAX) * 100);
+})();
+
+/* Smooth step switching */
+function showStep(id) {
+  const cur = document.querySelector('.step.active');
+  const next = $(id);
+  const go = () => {
+    next.classList.remove('hidden');
+    void next.offsetWidth;
+    next.classList.add('active');
+  };
+  if (cur) {
+    cur.classList.remove('active');
+    setTimeout(() => { cur.classList.add('hidden'); go(); }, 450);
+  } else go();
+}
+
+/* Meter: values glide toward target every frame */
+function meterTick() {
+  const targetPct = Math.min(100, (displayLevel / METER_MAX) * 100);
+  const targetPeak = Math.min(100, (peakLevel / METER_MAX) * 100);
+  shownPct += (targetPct - shownPct) * 0.3;
+  shownPeak += (targetPeak - shownPeak) * 0.2;
+  meterFill.style.width = shownPct + '%';
+  meterPeak.style.left = 'calc(' + shownPeak + '% - 3px)';
+  meterPct.textContent = Math.round(shownPct) + '%';
+  meterEl.setAttribute('aria-valuenow', Math.round(shownPct));
   const ratio = displayLevel / BLOW_THRESHOLD;
-  meterFill.style.width = pct + '%';
-  meterPeak.style.left = 'calc(' + peakPct + '% - 3px)';
   meterFill.style.backgroundColor = ratio >= 1 ? '#d67575' : ratio >= 0.7 ? '#ffb703' : '#f1c2c2';
-  meterPct.textContent = Math.round(pct) + '%';
-  meterEl.setAttribute('aria-valuenow', Math.round(pct));
+  candlesContainer.style.setProperty('--lean', (-Math.min(ratio, 1.2) * 14).toFixed(1));
+  const settled = Math.abs(targetPct - shownPct) < 0.1 && Math.abs(targetPeak - shownPeak) < 0.1;
+  meterRaf = (isListening || !settled) ? requestAnimationFrame(meterTick) : null;
+}
+function startMeterLoop() { if (!meterRaf) meterRaf = requestAnimationFrame(meterTick); }
+
+function setMeter(level, now) {
+  displayLevel = Math.max(level, displayLevel * 0.9);
+  peakLevel = Math.max(level, peakLevel * 0.985);
+  const ratio = displayLevel / BLOW_THRESHOLD;
   meterStatus.textContent = ratio >= 1 ? 'Wish sent!' : ratio >= 0.7 ? 'Almost there, keep blowing' : ratio >= 0.15 ? 'Blow harder' : 'Listening…';
+  startMeterLoop();
 }
 
 function resetMeter(statusText) {
   displayLevel = 0; peakLevel = 0;
-  meterFill.style.width = '0%';
-  meterPeak.style.left = '0%';
   meterFill.style.backgroundColor = '#f1c2c2';
-  meterPct.textContent = '0%';
-  meterEl.setAttribute('aria-valuenow', 0);
   meterStatus.textContent = statusText || 'Mic is off';
+  candlesContainer.style.setProperty('--lean', 0);
+  startMeterLoop();
 }
 
 function renderCandles() {
   candlesContainer.innerHTML = '';
   for (let i = 0; i < totalCandles; i++) {
     const c = document.createElement('div');
-    c.className = 'flex flex-col items-center candle-item';
+    c.className = 'flex flex-col items-center candle-item relative';
+    c.style.animationDelay = (0.3 + i * 0.12) + 's';
     c.innerHTML = `
-      <div class="flame w-[7px] h-[11px] bg-gradient-to-t from-amber-400 via-orange-300 to-amber-100 rounded-[50%_50%_50%_50%/65%_65%_35%_35%] mb-1"></div>
+      <div class="flame-wrap"><div class="flame w-[7px] h-[11px] bg-gradient-to-t from-amber-400 via-orange-300 to-amber-100 rounded-[50%_50%_50%_50%/65%_65%_35%_35%] mb-1" style="animation-delay:${-i*0.2}s"></div></div>
       <div class="w-[5px] h-9 rounded-t-full bg-gradient-to-b from-white to-blush-200"></div>`;
     candlesContainer.appendChild(c);
   }
@@ -218,31 +279,47 @@ function extinguishCandles() {
   if (candlesBlown) return;
   candlesBlown = true;
   stopMicrophone();
-  document.querySelectorAll('.flame').forEach((flame, index) => {
+  document.querySelectorAll('.candle-item').forEach((item, i) => {
     setTimeout(() => {
-      flame.className = 'w-2 h-3 bg-neutral-300/60 rounded-full smoke mb-0.5';
-      flame.innerHTML = '';
-    }, index * 20);
+      item.querySelector('.flame-wrap').classList.add('out');
+      const s = document.createElement('span');
+      s.className = 'smoke';
+      item.appendChild(s);
+      setTimeout(() => s.remove(), 1700);
+    }, i * 140);
   });
-  triggerConfettiBurst();
   setTimeout(() => {
-    document.getElementById('step-cake').classList.add('hidden');
-    document.getElementById('step-envelope').classList.remove('hidden');
-  }, 1200);
+    const r = candlesContainer.getBoundingClientRect();
+    confettiBurst(r.left + r.width / 2, r.top, 110);
+  }, 300);
+  setTimeout(() => {
+    showStep('step-envelope');
+    $('env').classList.remove('open');
+    $('env').classList.add('env-wobble');
+  }, 1500);
 }
 
 function openCard() {
-  document.getElementById('step-envelope').classList.add('hidden');
-  document.getElementById('step-card').classList.remove('hidden');
+  const env = $('env');
+  if (env.classList.contains('open')) return;
+  env.classList.remove('env-wobble');
+  env.classList.add('open');
+  setTimeout(() => {
+    showStep('step-card');
+    document.querySelectorAll('#card-body > *').forEach((el, i) => {
+      el.classList.remove('in');
+      void el.offsetWidth;
+      el.classList.add('in');
+      el.style.animationDelay = (0.7 + i * 0.22) + 's';
+    });
+  }, 1100);
 }
 
 function resetExperience() {
   candlesBlown = false;
   renderCandles();
   resetMeter();
-  document.getElementById('step-card').classList.add('hidden');
-  document.getElementById('step-envelope').classList.add('hidden');
-  document.getElementById('step-cake').classList.remove('hidden');
+  showStep('step-cake');
 }
 
 async function toggleMicrophone() {
@@ -251,14 +328,14 @@ async function toggleMicrophone() {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioContext.createAnalyser();
-    microphone = audioContext.createMediaStreamSource(micStream);
+    audioContext.createMediaStreamSource(micStream).connect(analyser);
     analyser.fftSize = 512;
-    microphone.connect(analyser);
+    freqData = new Uint8Array(analyser.frequencyBinCount);
     isListening = true;
     meterWrap.classList.remove('idle');
     resetMeter('Listening…');
-    document.getElementById('mic-btn-text').innerText = "Listening... Blow into mic now!";
-    document.getElementById('mic-btn').classList.add('bg-blush-600', 'ring-4', 'ring-blush-200');
+    $('mic-btn-text').innerText = "Listening... Blow into mic now!";
+    $('mic-btn').classList.add('listening');
     detectBlow();
   } catch (err) {
     console.error("Microphone access denied or error:", err);
@@ -274,59 +351,68 @@ function stopMicrophone() {
   isListening = false;
   meterWrap.classList.add('idle');
   if (!candlesBlown) resetMeter();
-  const t = document.getElementById('mic-btn-text');
-  if (t) t.innerText = "Enable Mic to Blow Out Candles";
-  const b = document.getElementById('mic-btn');
-  if (b) b.classList.remove('bg-blush-600', 'ring-4', 'ring-blush-200');
+  $('mic-btn-text').innerText = "Enable Mic to Blow Out Candles";
+  $('mic-btn').classList.remove('listening');
 }
 
 function detectBlow() {
   if (!isListening || !analyser) return;
-  const data = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(data);
+  analyser.getByteFrequencyData(freqData);
   let sum = 0;
-  for (let i = 0; i < data.length; i++) sum += data[i];
-  const level = sum / data.length;
+  for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+  const level = sum / freqData.length;
   setMeter(level, performance.now());
   if (level > BLOW_THRESHOLD && !candlesBlown) { extinguishCandles(); return; }
   animationFrameId = requestAnimationFrame(detectBlow);
 }
 
-function triggerConfettiBurst() {
-  const canvas = document.getElementById('confetti-canvas');
-  canvas.classList.remove('hidden');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const particles = [];
+/* Confetti: one persistent, DPR-aware loop with tumbling pieces */
+const canvas = $('confetti-canvas');
+const ctx = canvas.getContext('2d');
+let pieces = [], confettiRaf = null;
+function sizeCanvas() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+addEventListener('resize', sizeCanvas);
+
+function confettiBurst(x, y, count) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const colors = ['#f1c2c2', '#e59d9d', '#d67575', '#fbeeee', '#ffd166', '#ffb703'];
-  for (let i = 0; i < 90; i++) {
-    particles.push({
-      x: canvas.width / 2, y: canvas.height * 0.40,
-      vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.8) * 14 - 3,
-      radius: Math.random() * 5 + 2, color: colors[Math.floor(Math.random() * colors.length)],
-      alpha: 1, decay: Math.random() * 0.015 + 0.008
+  for (let i = 0; i < count; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.9;
+    const sp = 6 + Math.random() * 9;
+    pieces.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      w: 5 + Math.random() * 6, h: 3 + Math.random() * 4,
+      rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4,
+      wob: Math.random() * 6.28, color: colors[(Math.random() * colors.length) | 0],
+      life: 1, decay: 0.004 + Math.random() * 0.006, round: Math.random() < 0.3
     });
   }
-  function update() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let active = 0;
-    particles.forEach(p => {
-      if (p.alpha > 0) {
-        active++;
-        p.x += p.vx; p.y += p.vy; p.vy += 0.4; p.alpha -= p.decay;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.alpha);
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    });
-    if (active > 0) requestAnimationFrame(update); else canvas.classList.add('hidden');
+  if (!confettiRaf) confettiRaf = requestAnimationFrame(confettiTick);
+}
+
+function confettiTick() {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  pieces = pieces.filter(p => p.life > 0 && p.y < innerHeight + 20);
+  for (const p of pieces) {
+    p.vx *= 0.985; p.vy = p.vy * 0.985 + 0.22;
+    p.x += p.vx + Math.sin(p.wob) * 0.6; p.y += p.vy;
+    p.rot += p.vr; p.wob += 0.08; p.life -= p.decay;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.6));
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.scale(1, Math.abs(Math.cos(p.wob)) * 0.8 + 0.2);
+    ctx.fillStyle = p.color;
+    if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.h, 0, 6.28); ctx.fill(); }
+    else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    ctx.restore();
   }
-  update();
+  confettiRaf = pieces.length ? requestAnimationFrame(confettiTick) : null;
+  if (!pieces.length) ctx.clearRect(0, 0, innerWidth, innerHeight);
 }
 </script>
 </body>
