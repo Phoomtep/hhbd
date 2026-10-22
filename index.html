@@ -215,7 +215,7 @@ const $ = id => document.getElementById(id);
 /* ===== YouTube music =====
    Paste your YouTube link here (add ?t=45 or &t=45 to start at 45s). Leave '' to disable. */
 const MUSIC_URL = 'https://youtu.be/RHT8gNLRFtU?si=9DxbOfDgvKHyjBV1';
-const MUSIC_VOLUME = 70; // 0-100
+const MUSIC_VOLUME = 100; // 0-100
 
 const MUSIC_ID = (() => { const m = MUSIC_URL.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(MUSIC_URL) ? MUSIC_URL : null); })();
 const MUSIC_START = (() => { const m = MUSIC_URL.match(/[?&#](?:t|start)=(\d+)/); return m ? +m[1] : 0; })();
