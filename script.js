@@ -116,12 +116,30 @@ function toggleMusic() {
 const candlesContainer = $('candles-container');
 const totalCandles = 3;
 let candlesBlown = false,
-  audioContext = null,
+  sharedAudioCtx = null,
+  micSource = null,
   analyser = null,
   micStream = null,
   isListening = false,
   animationFrameId = null,
   freqData = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+// Pre-warm and unlock audio context on any user interaction
+const unlockAudio = () => { getAudioContext(); };
+['click', 'touchstart', 'pointerdown', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, unlockAudio, { passive: true });
+});
 
 const BLOW_THRESHOLD = 60;
 const METER_MAX = 100;
@@ -230,7 +248,7 @@ renderCandles();
 function extinguishCandles() {
   if (candlesBlown) return;
   candlesBlown = true;
-  stopMicrophone();
+  stopMicrophone(false);
   document.querySelectorAll('.candle-item').forEach((item, i) => {
     setTimeout(() => {
       item.querySelector('.flame-wrap').classList.add('out');
@@ -245,6 +263,7 @@ function extinguishCandles() {
     confettiBurst(r.left + r.width / 2, r.top, 110);
   }, 300);
   setTimeout(() => {
+    releaseMicHardware();
     showStep('step-envelope');
     $('env').classList.remove('open');
     $('env').classList.add('env-wobble');
@@ -254,9 +273,10 @@ function extinguishCandles() {
 /* Envelope open sound: paper slide + flap rustle */
 function openCardSound() {
   try {
-    sfxCtx = sfxCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (sfxCtx.state === 'suspended') sfxCtx.resume();
-    const c = sfxCtx, t = c.currentTime + 0.01;
+    const c = getAudioContext();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume().catch(() => {});
+    const t = c.currentTime + 0.01;
     const master = c.createGain();
     master.gain.value = 0.8;
     master.connect(c.destination);
@@ -313,22 +333,37 @@ function openCard() {
 function resetExperience() {
   stopMusic();
   candlesBlown = false;
+  releaseMicHardware();
   renderCandles();
   resetMeter();
   showStep('step-cake');
 }
 
+function releaseMicHardware() {
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+}
+
 async function toggleMicrophone() {
+  // Synchronously initialize and unlock audio context during direct user gesture
+  getAudioContext();
+
   if (isListening) {
-    stopMicrophone();
+    stopMicrophone(true);
     return;
   }
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioContext.createAnalyser();
-    audioContext.createMediaStreamSource(micStream).connect(analyser);
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {});
+    }
+    analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
+    micSource = ctx.createMediaStreamSource(micStream);
+    micSource.connect(analyser);
     freqData = new Uint8Array(analyser.frequencyBinCount);
     isListening = true;
     meterWrap.classList.remove('idle');
@@ -339,25 +374,27 @@ async function toggleMicrophone() {
   } catch (err) {
     console.error("Microphone access denied or error:", err);
     alert("Microphone access is required for breath detection. You can also simply tap the candles to blow them out!");
-    stopMicrophone();
+    stopMicrophone(true);
   }
 }
 
-function stopMicrophone() {
+function stopMicrophone(releaseHardware = true) {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
   }
-  if (micStream) {
-    micStream.getTracks().forEach(t => t.stop());
-    micStream = null;
+  if (micSource) {
+    try { micSource.disconnect(); } catch (e) {}
+    micSource = null;
   }
-  if (audioContext && audioContext.state !== 'closed') audioContext.close();
   isListening = false;
   meterWrap.classList.add('idle');
   if (!candlesBlown) resetMeter();
   $('mic-btn-text').innerText = "Enable Mic to Blow Out Candles";
   $('mic-btn').classList.remove('listening');
+  if (releaseHardware) {
+    releaseMicHardware();
+  }
 }
 
 function detectBlow() {
@@ -389,14 +426,12 @@ sizeCanvas();
 addEventListener('resize', sizeCanvas);
 
 /* Confetti sound: realistic party popper = sharp air "pop" + paper streamer rustle (noise only, no tones) */
-let sfxCtx = null;
-const CONFETTI_RISE = 0.0; // popper pops instantly
-
 function confettiSound(count) {
   try {
-    sfxCtx = sfxCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (sfxCtx.state === 'suspended') sfxCtx.resume();
-    const c = sfxCtx, t = c.currentTime + 0.005;
+    const c = getAudioContext();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume().catch(() => {});
+    const t = c.currentTime + 0.005;
     const master = c.createGain();
     master.gain.value = Math.min(1, 0.6 + count / 250);
     master.connect(c.destination);
@@ -449,8 +484,16 @@ function confettiSound(count) {
 }
 
 function confettiBurst(x, y, count) {
-  confettiSound(count);
-  setTimeout(() => spawnConfetti(x, y, count), CONFETTI_RISE * 1000);
+  const trigger = () => {
+    confettiSound(count);
+    spawnConfetti(x, y, count);
+  };
+  const c = getAudioContext();
+  if (c && c.state === 'suspended') {
+    c.resume().then(trigger).catch(trigger);
+  } else {
+    trigger();
+  }
 }
 
 function spawnConfetti(x, y, count) {
