@@ -264,8 +264,8 @@ const candlesContainer = $('candles-container');
 const totalCandles = 3;
 let candlesBlown = false, audioContext = null, analyser = null, micStream = null, isListening = false, animationFrameId = null, freqData = null;
 
-const BLOW_THRESHOLD = 80;
-const METER_MAX = 120;
+const BLOW_THRESHOLD = 60;
+const METER_MAX = 100;
 
 const meterEl = $('meter'), meterWrap = $('meter-wrap'), meterFill = $('meter-fill'), meterPeak = $('meter-peak'), meterPct = $('meter-pct'), meterStatus = $('meter-status');
 let displayLevel = 0, peakLevel = 0, shownPct = 0, shownPeak = 0, meterRaf = null;
