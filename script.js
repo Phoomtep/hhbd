@@ -251,11 +251,53 @@ function extinguishCandles() {
   }, 1500);
 }
 
+/* Envelope open sound: paper slide + flap rustle */
+function openCardSound() {
+  try {
+    sfxCtx = sfxCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (sfxCtx.state === 'suspended') sfxCtx.resume();
+    const c = sfxCtx, t = c.currentTime + 0.01;
+    const master = c.createGain();
+    master.gain.value = 0.8;
+    master.connect(c.destination);
+
+    // Paper rustle: filtered noise with a rising sweep
+    const len = Math.floor(c.sampleRate * 0.5), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / len);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 0.8;
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(3200, t + 0.45);
+    const g = c.createGain();
+    g.gain.value = 0.35;
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(t);
+
+    // Soft flap tick
+    const tick = c.createBufferSource(), tl = Math.floor(c.sampleRate * 0.04), tb = c.createBuffer(1, tl, c.sampleRate), td = tb.getChannelData(0);
+    for (let i = 0; i < tl; i++) td[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / tl, 3);
+    tick.buffer = tb;
+    const tf = c.createBiquadFilter();
+    tf.type = 'highpass';
+    tf.frequency.value = 1500;
+    const tg = c.createGain();
+    tg.gain.value = 0.5;
+    tick.connect(tf); tf.connect(tg); tg.connect(master);
+    tick.start(t + 0.3);
+  } catch (e) {
+    /* audio unavailable; ignore */
+  }
+}
+
 function openCard() {
   const env = $('env');
   if (env.classList.contains('open')) return;
   env.classList.remove('env-wobble');
   env.classList.add('open');
+  openCardSound();
   playMusic();
   setTimeout(() => {
     showStep('step-card');
@@ -269,7 +311,7 @@ function openCard() {
 }
 
 function resetExperience() {
-  //stopMusic();
+  stopMusic();
   candlesBlown = false;
   renderCandles();
   resetMeter();
